@@ -1,7 +1,14 @@
 import axios from "axios";
 import { toast } from "sonner";
+import { clearUser } from "../assets/redux/userSlice";
 
 const API_URL = import.meta.env.VITE_BASE_URL;
+
+let modifiedDispatch:any
+export const setMyDispatch=(dispatch:any)=>{
+  modifiedDispatch=dispatch
+
+}
 
 const instance = axios.create({
   baseURL: `${API_URL}/api`,
@@ -24,6 +31,7 @@ instance.interceptors.response.use(
   },
   async (e) => {
     if (e.response && e.response.status === 401) {
+      modifiedDispatch(clearUser)
       console.log("responsemess", e.response.data.message);
 
       if (e.response.data.message === "otp not verified") {

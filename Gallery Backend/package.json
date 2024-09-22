@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start:ts":"tsc -w",
+    "start:ts": "tsc -w",
     "start:js": "nodemon dist/main.js",
-    "start":"concurrently npm:start:*",
+    "start": "concurrently npm:start:*",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

@@ -32,6 +32,19 @@ class ProfileControllers{
         }
 
     }
+    async updateProfilePicture(req:Request,res:Response,next:NextFunction){
+        try{
+               const userId = (req as CustomRequest).user.userId;
+           const response=await this.Interactor.updateProfilePicture(userId,req.file as Express.Multer.File)
+           if(response.status)return res.status(201).json({success:true,message:response.message,url:response.url})
+            res.status(500).json({success:false,message:response.message})
+
+        }
+        catch(error){
+            next(error)
+        }
+
+    }
 
 }
 export default ProfileControllers

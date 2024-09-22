@@ -6,6 +6,7 @@ import { Toaster } from "sonner"
 import GalleryPage from "./pages/GalleryPage."
 import ProfilePage from "./pages/ProfilePage"
 import GlobalContextProvider from "./context/userContext"
+import PasswordReset from "./components/ResetPassword"
 function App() {
 
 
@@ -20,6 +21,7 @@ function App() {
             <Route path="/otp/verify" element={<OtpPage />} />
             <Route path="/" element={<GalleryPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/reset-password" element={<PasswordReset/>}/>
           </Routes>
         </BrowserRouter>
       </GlobalContextProvider>

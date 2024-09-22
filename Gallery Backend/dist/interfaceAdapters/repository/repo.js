@@ -79,14 +79,14 @@ class Repository {
                         imagePath: "$images.imagePath",
                         title: "$images.title",
                         orderIndex: "$images.orderIndex",
-                        createdAt: "$images.createdAt"
+                        createdAt: "$images.createdAt",
                     },
                 },
                 {
                     $sort: {
-                        orderIndex: 1
-                    }
-                }
+                        orderIndex: 1,
+                    },
+                },
             ]);
             return photos;
         }
@@ -121,22 +121,22 @@ class Repository {
             const profileDetails = await userSchema_1.default.aggregate([
                 {
                     $match: {
-                        _id: new mongoose_1.default.Types.ObjectId(userId)
-                    }
+                        _id: new mongoose_1.default.Types.ObjectId(userId),
+                    },
                 },
                 {
                     $set: {
-                        profilePhoto: { $ifNull: ["$profilePhoto", ""] }
-                    }
+                        profilePhoto: { $ifNull: ["$profilePhoto", ""] },
+                    },
                 },
                 {
                     $project: {
                         _id: 0,
                         name: 1,
                         email: 1,
-                        profilePhoto: 1
-                    }
-                }
+                        profilePhoto: 1,
+                    },
+                },
             ]);
             return profileDetails[0];
         }
@@ -147,6 +147,68 @@ class Repository {
     async updateProfile(userId, name) {
         try {
             const result = await userSchema_1.default.updateOne({ _id: userId }, { $set: { name: name } });
+            return result.modifiedCount > 0;
+        }
+        catch (error) {
+            throw error;
+        }
+    }
+    async resetPassword(email, password) {
+        try {
+            const result = await userSchema_1.default.updateOne({ email: email }, { $set: { password: password } });
+            return result.modifiedCount > 0;
+        }
+        catch (error) {
+            throw error;
+        }
+    }
+    async updateProfilePicture(userId, key) {
+        try {
+            const result = await userSchema_1.default.updateOne({ _id: userId }, { $set: { profilePhoto: key } });
+            return result.modifiedCount > 0;
+        }
+        catch (error) {
+            throw error;
+        }
+    }
+    async findPhotos(userId, imageIds) {
+        try {
+            console.log("here");
+            console.log("imagaids", imageIds);
+            const convertedIds = imageIds.map((id) => new mongoose_1.default.Types.ObjectId(id));
+            const images = await userSchema_1.default.aggregate([
+                { $match: { _id: new mongoose_1.default.Types.ObjectId(userId) } },
+                {
+                    $project: {
+                        images: {
+                            $filter: {
+                                input: "$images",
+                                as: "image",
+                                cond: { $in: ["$$image._id", convertedIds] },
+                            },
+                        },
+                    },
+                },
+                {
+                    $unwind: "$images"
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        imagePath: "$images.imagePath"
+                    }
+                }
+            ]);
+            console.log("imageIds", images);
+            return images;
+        }
+        catch (error) {
+            throw error;
+        }
+    }
+    async deletePhotos(userId, imageIds) {
+        try {
+            const result = await userSchema_1.default.updateOne({ _id: userId }, { $pull: { images: { _id: { $in: imageIds } } } });
             return result.modifiedCount > 0;
         }
         catch (error) {

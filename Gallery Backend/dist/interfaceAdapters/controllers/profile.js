@@ -27,5 +27,17 @@ class ProfileControllers {
             next(error);
         }
     }
+    async updateProfilePicture(req, res, next) {
+        try {
+            const userId = req.user.userId;
+            const response = await this.Interactor.updateProfilePicture(userId, req.file);
+            if (response.status)
+                return res.status(201).json({ success: true, message: response.message, url: response.url });
+            res.status(500).json({ success: false, message: response.message });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
 }
 exports.default = ProfileControllers;

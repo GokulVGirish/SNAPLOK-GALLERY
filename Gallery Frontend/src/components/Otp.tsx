@@ -4,12 +4,15 @@ import useVerifyToken from "../hooks & functions/useVerify";
 import instance from "../axios/instance";
 import { useNavigate } from "react-router-dom";
 import { AxiosError } from "axios";
+import { useAppDispatch } from "../assets/redux/store";
+import { addUser } from "../assets/redux/userSlice";
 
 const Otp=()=>{
 
 
    const [otp, setOtp] = useState(new Array(4).fill(""));
    const navigate=useNavigate()
+   const dispatch=useAppDispatch()
 
    const handleInputChange = (element:any, index:any) => {
      if (/^[0-9]$/.test(element.value) || element.value === "") {
@@ -32,9 +35,17 @@ const Otp=()=>{
          const response = await instance.post("/auth/otp/signup", {
            otp: otp.join(""),
          });
-         if (response.data.success) return toast.success("Signed Up Sucessfully",{richColors:true,duration:1200,onAutoClose:()=>{
-            navigate("/");
-         }})
+         if (response.data.success){
+          dispatch(addUser({user:response.data.user,img:response.data.img}))
+
+           return toast.success("Signed Up Sucessfully", {
+             richColors: true,
+             duration: 1200,
+             onAutoClose: () => {
+               navigate("/");
+             },
+           });
+         }
 
     }catch(error){
         if(error instanceof AxiosError && error.response?.status!==401){

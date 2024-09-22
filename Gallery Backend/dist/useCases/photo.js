@@ -67,5 +67,19 @@ class PhotoManagementInteractor {
             throw error;
         }
     }
+    async deletePhotos(userId, imageIds) {
+        try {
+            const photos = await this.Repository.findPhotos(userId, imageIds);
+            const deletedPromise = photos.map(async (img) => {
+                return await this.AwsS3.deleteObjectCommandS3(img.imagePath);
+            });
+            await Promise.all(deletedPromise);
+            const response = await this.Repository.deletePhotos(userId, imageIds);
+            return response;
+        }
+        catch (error) {
+            throw error;
+        }
+    }
 }
 exports.default = PhotoManagementInteractor;

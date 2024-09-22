@@ -55,7 +55,7 @@ class AuthControllers {
         res.cookie("refreshToken", response.refresh);
         return res
           .status(201)
-          .json({ success: true, message: response.message });
+          .json({ success: true, message: response.message,user:response.user });
       }
       switch (response.errorCode) {
         case "Invalid_User":
@@ -79,33 +79,70 @@ class AuthControllers {
       next(error);
     }
   }
-  async Login(req: Request, res: Response, next: NextFunction) {
+  async login(req: Request, res: Response, next: NextFunction) {
     try {
-        
       const response = await this.Interactor.Login(req.body);
-     
-      if (response.status)
-       {
 
-         res.cookie("accessToken", response.access);
-         res.cookie("refreshToken", response.refresh);
-         return res
-           .status(200)
-           .json({ success: true, message: response.message });
-       }
+      if (response.status) {
+        res.cookie("accessToken", response.access);
+        res.cookie("refreshToken", response.refresh);
+        return res
+          .status(200)
+          .json({ success: true, message: response.message,img:response.img ,user:response.user});
+      }
       switch (response.errorCode) {
-        case "No_User":return res.status(404).json({success:false,message:response.message})
-        case "Wrong_Pass":return  res.status(403).json({success:false,message:response.message})
+        case "No_User":
+          return res
+            .status(404)
+            .json({ success: false, message: response.message });
+        case "Wrong_Pass":
+          return res
+            .status(403)
+            .json({ success: false, message: response.message });
       }
     } catch (error) {
       next(error);
     }
   }
-  async Logout(req: Request, res: Response, next: NextFunction) {
+  async logout(req: Request, res: Response, next: NextFunction) {
     try {
       res.clearCookie("accessToken");
       res.clearCookie("refreshToken");
       res.status(200).json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  }
+  async PasswordResetLink(req: Request, res: Response, next: NextFunction) {
+    try {
+      const email = req.body.email;
+      const response = await this.Interactor.passwordResetLink(email);
+
+      if (response)
+        return res
+          .status(200)
+          .json({ success: true, message: "Sucessfully Sent" });
+      res
+        .status(500)
+        .json({ success: false, message: "Error sending Reset Link" });
+    } catch (error) {
+      next(error);
+    }
+  }
+  async resetPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const token=req.params.token
+      const password=req.body.password
+      const response=await this.Interactor.resetPassword(token,password)
+      if(response.status) return res.status(200).json({success:true,message:response.message})
+        switch (response.errorCode) {
+          case "USER_NOT_FOUND":return res.status(404).json({success:false,message:response.message})
+          case "LINK_EXPIRED":return res.status(403).json({success:false,message:response.message})
+          default:return res
+            .status(500)
+            .json({ success: false, message: response.message });
+        }
+
     } catch (error) {
       next(error);
     }

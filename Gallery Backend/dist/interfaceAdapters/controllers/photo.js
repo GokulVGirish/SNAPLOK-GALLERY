@@ -59,5 +59,18 @@ class PhotoManagementControllers {
             next(error);
         }
     }
+    async deletePhotos(req, res, next) {
+        try {
+            const userId = req.user.userId;
+            const selectedImages = req.body;
+            const response = await this.Interactor.deletePhotos(userId, selectedImages);
+            if (response)
+                return res.status(200).json({ success: true, message: "Sucessfully Deleted" });
+            res.status(500).json({ success: false });
+        }
+        catch (error) {
+            next(error);
+        }
+    }
 }
 exports.default = PhotoManagementControllers;

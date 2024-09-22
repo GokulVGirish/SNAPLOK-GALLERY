@@ -21,8 +21,22 @@ interface IRepository {
     userId: Types.ObjectId,
     imageOrder: { _id: Types.ObjectId; orderIndex: number }[]
   ): Promise<void>;
-  photoTitleEdit(userId:Types.ObjectId,imageId: string, newTitle: string): Promise<boolean>;
-  getProfile(userId:Types.ObjectId):Promise<User>
-  updateProfile(userId:Types.ObjectId,name:string):Promise<boolean>
+  photoTitleEdit(
+    userId: Types.ObjectId,
+    imageId: string,
+    newTitle: string
+  ): Promise<boolean>;
+  getProfile(userId: Types.ObjectId): Promise<User>;
+  updateProfile(userId: Types.ObjectId, name: string): Promise<boolean>;
+  resetPassword(email: string, password: string): Promise<boolean>;
+  updateProfilePicture(userId: Types.ObjectId, key: string): Promise<boolean>;
+  findPhotos(
+    userId: Types.ObjectId,
+    imageIds: Types.ObjectId[]
+  ): Promise<Image[]>;
+  deletePhotos(
+    userId: Types.ObjectId,
+    imageIds: Types.ObjectId[]
+  ): Promise<boolean>;
 }
 export default IRepository

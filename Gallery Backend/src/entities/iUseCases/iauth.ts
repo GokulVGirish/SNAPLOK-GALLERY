@@ -20,6 +20,7 @@ interface IAuthInteractor {
     errorCode?: string;
     access?: string;
     refresh?: string;
+    user?:string
   }>;
   Login(data:{email:string,password:string}): Promise<{
     status: boolean;
@@ -27,6 +28,10 @@ interface IAuthInteractor {
     errorCode?: string;
     access?: string;
     refresh?: string;
+    user?:string,
+    img?:string
   }>;
+  passwordResetLink(email:string):Promise<boolean>
+  resetPassword(token:string,password:string):Promise<{status:boolean,message:string,errorCode?:string}>
 }
 export default IAuthInteractor

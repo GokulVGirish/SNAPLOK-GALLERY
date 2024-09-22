@@ -86,5 +86,22 @@ class PhotoManagementInteractor implements IPhotoManagementInteractor {
         throw error
       }
   }
+  async deletePhotos(userId: Types.ObjectId, imageIds: Types.ObjectId[]): Promise<boolean> {
+      try{
+        const photos=await this.Repository.findPhotos(userId,imageIds)
+        const deletedPromise=photos.map(async(img)=>{
+
+          return await this.AwsS3.deleteObjectCommandS3(img.imagePath as string)
+        })
+        await Promise.all(deletedPromise)
+        const response=await this.Repository.deletePhotos(userId,imageIds)
+        return response
+
+      }
+      catch(error){
+        throw error
+
+      }
+  }
 }
 export default PhotoManagementInteractor;

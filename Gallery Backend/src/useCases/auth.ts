@@ -4,11 +4,13 @@ import { IMailer } from "../entities/services/iMailer";
 import jwt from "jsonwebtoken"
 import bcrypt from "bcryptjs"
 import { emit } from "process";
+import { IawsS3 } from "../entities/services/iawsS3";
+import { signedCookie } from "cookie-parser";
 
 
 class AuthInteractor implements IAuthInteractor{
-    constructor(private readonly Repository:IRepository,private readonly Mailer:IMailer){}
-    async otpSignup(userData: { name: string; email: string; password: string; }): Promise<{ status: boolean; message: string; errorCode?: string;token?:string }> {
+    constructor(private readonly Repository:IRepository,private readonly Mailer:IMailer,private readonly AwsS3:IawsS3){}
+    async otpSignup(userData: { name: string; email: string; password: string; }): Promise<{ status: boolean; message: string; errorCode?: string;token?:string; }> {
         try{
             const userExist=await this.Repository.userExist(userData.email)
             if(userExist) return {status:false,message:"User Already Exist",errorCode:"Already_Exist"}
@@ -33,7 +35,7 @@ class AuthInteractor implements IAuthInteractor{
             throw error
         }
     }
-    async otpValidateSignup(email: string, otp: string): Promise<{ status: boolean; message: string; errorCode?: string;access?:string;refresh?:string }> {
+    async otpValidateSignup(email: string, otp: string): Promise<{ status: boolean; message: string; errorCode?: string;access?:string;refresh?:string,user?:string }> {
         try{
             const otpUser=await this.Repository.getOtpUser(email)
             if(!otpUser)return {status:false,message:"Try Signing Up Again",errorCode:"Invalid_User"}
@@ -68,14 +70,14 @@ class AuthInteractor implements IAuthInteractor{
              process.env.REFRESH_TOKEN_SECRET as string,
              { expiresIn: "1d" }
            );
-           return {status:true,message:"Success",access:accessToken,refresh:refreshToken}
+           return {status:true,message:"Success",access:accessToken,refresh:refreshToken,user:user.name}
 
         }
         catch(error){
             throw error
         }
     }
-    async Login(data: { email: string; password: string; }): Promise<{ status: boolean; message: string; errorCode?: string; access?: string; refresh?: string; }> {
+    async Login(data: { email: string; password: string; }): Promise<{ status: boolean; message: string; errorCode?: string; access?: string; refresh?: string;user?:string;img?:string }> {
         try{
             const userExist=await this.Repository.userExist(data.email)
             if(!userExist) return {status:false,message:"User not found",errorCode:"No_User"}
@@ -100,11 +102,21 @@ class AuthInteractor implements IAuthInteractor{
               process.env.REFRESH_TOKEN_SECRET as string,
               { expiresIn: "1d" }
             );
+            let signedUrl=""
+            if(userExist.profilePhoto){
+              const command=this.AwsS3.getObjectCommandS3(userExist.profilePhoto)
+               signedUrl=await this.AwsS3.getSignedUrlS3(command,48 * 3600 )
+
+            }
             return {
               status: true,
               message: "Success",
               access: accessToken,
               refresh: refreshToken,
+              user:userExist.name,
+              img:signedUrl
+
+              
             };
 
 
@@ -113,7 +125,54 @@ class AuthInteractor implements IAuthInteractor{
             throw error
         }
     }
-    
+    async passwordResetLink(email: string): Promise<boolean> {
+        try{
+          const user=await this.Repository.userExist(email)
+          if(!user)return false
+          const resetTokenExpiry = Date.now() + 600000;
+           const payload = { email, resetTokenExpiry };
+           const hashedToken = jwt.sign(
+             payload,
+             process.env.PASSWORD_RESET_SECRET as string
+           );
+           const resetLink = `${process.env.Origin}/reset-password?token=${hashedToken}`;
+           const result=await this.Mailer.sendPasswordResetLink(email,resetLink)
+           if(!result)return false
+           return true
+
+
+        }
+        catch(error){
+          throw error
+        }
+    }
+    async resetPassword(token: string, password: string): Promise<{ status: boolean; message: string; errorCode?: string; }> {
+        try{
+           const decodedToken = jwt.verify(
+             token,
+             process.env.PASSWORD_RESET_SECRET as string
+           );
+           const { email, resetTokenExpiry } =
+             decodedToken as any;
+           const userExist = await this.Repository.userExist(email);
+           if (!userExist) return { status: false, message: "Invalid User",errorCode:"USER_NOT_FOUND" };
+           if (Date.now() > new Date(resetTokenExpiry).getTime())
+             return { status: false, message: "Expired Link" ,errorCode:"LINK_EXPIRED"};
+           const hashedPassword = await bcrypt.hash(password, 10);
+           const response = await this.Repository.resetPassword(
+             email,
+             hashedPassword
+           );
+           if (!response)
+             return { status: false, message: "Internal server error",errorCode:"INTERNAL_ERROR" };
+           return { status: true, message: "Password Changed Sucessfully" };
+
+
+        }
+        catch(error){
+          throw error
+        }
+    }
 
 }
 export default AuthInteractor

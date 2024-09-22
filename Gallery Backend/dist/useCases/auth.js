@@ -6,9 +6,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 class AuthInteractor {
-    constructor(Repository, Mailer) {
+    constructor(Repository, Mailer, AwsS3) {
         this.Repository = Repository;
         this.Mailer = Mailer;
+        this.AwsS3 = AwsS3;
     }
     async otpSignup(userData) {
         try {
@@ -61,7 +62,7 @@ class AuthInteractor {
                 email: user.email,
                 isVerified: true,
             }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: "1d" });
-            return { status: true, message: "Success", access: accessToken, refresh: refreshToken };
+            return { status: true, message: "Success", access: accessToken, refresh: refreshToken, user: user.name };
         }
         catch (error) {
             throw error;
@@ -86,12 +87,56 @@ class AuthInteractor {
                 email: userExist.email,
                 isVerified: true,
             }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: "1d" });
+            let signedUrl = "";
+            if (userExist.profilePhoto) {
+                const command = this.AwsS3.getObjectCommandS3(userExist.profilePhoto);
+                signedUrl = await this.AwsS3.getSignedUrlS3(command, 48 * 3600);
+            }
             return {
                 status: true,
                 message: "Success",
                 access: accessToken,
                 refresh: refreshToken,
+                user: userExist.name,
+                img: signedUrl
             };
+        }
+        catch (error) {
+            throw error;
+        }
+    }
+    async passwordResetLink(email) {
+        try {
+            const user = await this.Repository.userExist(email);
+            if (!user)
+                return false;
+            const resetTokenExpiry = Date.now() + 600000;
+            const payload = { email, resetTokenExpiry };
+            const hashedToken = jsonwebtoken_1.default.sign(payload, process.env.PASSWORD_RESET_SECRET);
+            const resetLink = `${process.env.Origin}/reset-password?token=${hashedToken}`;
+            const result = await this.Mailer.sendPasswordResetLink(email, resetLink);
+            if (!result)
+                return false;
+            return true;
+        }
+        catch (error) {
+            throw error;
+        }
+    }
+    async resetPassword(token, password) {
+        try {
+            const decodedToken = jsonwebtoken_1.default.verify(token, process.env.PASSWORD_RESET_SECRET);
+            const { email, resetTokenExpiry } = decodedToken;
+            const userExist = await this.Repository.userExist(email);
+            if (!userExist)
+                return { status: false, message: "Invalid User", errorCode: "USER_NOT_FOUND" };
+            if (Date.now() > new Date(resetTokenExpiry).getTime())
+                return { status: false, message: "Expired Link", errorCode: "LINK_EXPIRED" };
+            const hashedPassword = await bcryptjs_1.default.hash(password, 10);
+            const response = await this.Repository.resetPassword(email, hashedPassword);
+            if (!response)
+                return { status: false, message: "Internal server error", errorCode: "INTERNAL_ERROR" };
+            return { status: true, message: "Password Changed Sucessfully" };
         }
         catch (error) {
             throw error;

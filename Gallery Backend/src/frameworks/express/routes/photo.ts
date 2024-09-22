@@ -5,7 +5,7 @@ import PhotoManagementControllers from "../../../interfaceAdapters/controllers/p
 import PhotoManagementInteractor from "../../../useCases/photo"
 import Repository from "../../../interfaceAdapters/repository/repo"
 import AwsS3 from "../../services/awsS3"
-import upload from "../../services/Multer"
+import upload from "../../services/multer";
 
 const photoRouter=express.Router()
 
@@ -18,6 +18,7 @@ photoRouter.post('/',authMiddleware,isVerified,upload.array("photos"),controller
 photoRouter.get('/',authMiddleware,isVerified,controller.getPhotos.bind(controller))
 photoRouter.put('/',authMiddleware,isVerified,controller.changePhotosOrder.bind(controller))
 photoRouter.put('/edit/:imgId',authMiddleware,isVerified,controller.photoTitleEdit.bind(controller))
+photoRouter.delete('/',authMiddleware,isVerified,controller.deletePhotos.bind(controller))
 
 
 export default photoRouter

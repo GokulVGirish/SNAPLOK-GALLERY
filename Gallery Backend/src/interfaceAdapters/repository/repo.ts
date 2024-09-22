@@ -3,6 +3,8 @@ import IRepository from "../../entities/iRepo";
 import { Image, OtpUser, User } from "../../entities/rules/user";
 import otpModel from "../../frameworks/mongoose/models/otpSchema";
 import userModel from "../../frameworks/mongoose/models/userSchema";
+import e from "cors";
+import { Type } from "@aws-sdk/client-s3";
 
 class Repository implements IRepository {
   async createOtpUser(userData: {
@@ -67,105 +69,185 @@ class Repository implements IRepository {
     }
   }
   async fetchPhotos(userId: Types.ObjectId): Promise<Image[]> {
-      try{
-        const photos = await userModel.aggregate([
-          {
-            $match: {
-              _id: new mongoose.Types.ObjectId(userId),
-            },
+    try {
+      const photos = await userModel.aggregate([
+        {
+          $match: {
+            _id: new mongoose.Types.ObjectId(userId),
           },
-          {
-            $unwind: "$images",
+        },
+        {
+          $unwind: "$images",
+        },
+        {
+          $project: {
+            _id: "$images._id",
+            imagePath: "$images.imagePath",
+            title: "$images.title",
+            orderIndex: "$images.orderIndex",
+            createdAt: "$images.createdAt",
           },
-          {
-            $project: {
-               _id:"$images._id",
-              imagePath: "$images.imagePath",
-              title: "$images.title",
-              orderIndex:"$images.orderIndex",
-              createdAt:"$images.createdAt"
-
-            },
+        },
+        {
+          $sort: {
+            orderIndex: 1,
           },
+        },
+      ]);
+      return photos;
+    } catch (error) {
+      throw error;
+    }
+  }
+  async changePhotoOrder(
+    userId: Types.ObjectId,
+    imageOrder: { _id: Types.ObjectId; orderIndex: number }[]
+  ): Promise<void> {
+    try {
+      const updatePromise = imageOrder?.map(async (img) => {
+        return await userModel.findOneAndUpdate(
+          { _id: userId },
+          { $set: { "images.$[img].orderIndex": img.orderIndex } },
           {
-            $sort:{
-                orderIndex:1
-            }
+            arrayFilters: [{ "img._id": img._id }],
           }
-        ]);
-       return photos
-
-      }
-      catch(error){
-        throw error
-      }
+        );
+      });
+      await Promise.all(updatePromise);
+    } catch (error) {
+      throw error;
+    }
   }
-  async changePhotoOrder(userId: Types.ObjectId, imageOrder: { _id: Types.ObjectId; orderIndex: number; }[]): Promise<void> {
-      try{
-       
-        const updatePromise=imageOrder?.map(async(img)=>{
-             return await userModel.findOneAndUpdate(
-               { _id: userId },
-               { $set: { "images.$[img].orderIndex": img.orderIndex } },
-               {
-                 arrayFilters: [{ "img._id": img._id }], 
-              
-               }
-             );
-        })
-         await Promise.all(updatePromise);
-
-      }
-      catch(error){
-        throw error
-      }
-  }
-  async photoTitleEdit(userId:Types.ObjectId,imageId: string, newTitle: string): Promise<boolean> {
-      try{
-        const result=await userModel.updateOne({_id:userId},{$set:{"images.$[img].title":newTitle}},{arrayFilters:[{"img._id":imageId}]})
-        return result.modifiedCount>0
-
-      }
-      catch(error){
-        throw error
-      }
+  async photoTitleEdit(
+    userId: Types.ObjectId,
+    imageId: string,
+    newTitle: string
+  ): Promise<boolean> {
+    try {
+      const result = await userModel.updateOne(
+        { _id: userId },
+        { $set: { "images.$[img].title": newTitle } },
+        { arrayFilters: [{ "img._id": imageId }] }
+      );
+      return result.modifiedCount > 0;
+    } catch (error) {
+      throw error;
+    }
   }
   async getProfile(userId: Types.ObjectId): Promise<User> {
-      try{
-        const profileDetails=await userModel.aggregate([
-            {
-                $match:{
-                    _id:new mongoose.Types.ObjectId(userId)
-                }
-            },
-            {
-                $set:{
-                    profilePhoto:{$ifNull:["$profilePhoto",""]}
-                }
-            },
-            {
-                $project:{
-                    _id:0,
-                    name:1,
-                    email:1,
-                    profilePhoto:1
-                }
+    try {
+      const profileDetails = await userModel.aggregate([
+        {
+          $match: {
+            _id: new mongoose.Types.ObjectId(userId),
+          },
+        },
+        {
+          $set: {
+            profilePhoto: { $ifNull: ["$profilePhoto", ""] },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            name: 1,
+            email: 1,
+            profilePhoto: 1,
+          },
+        },
+      ]);
 
-            }
-        ])
-        
-        return profileDetails[0]
-       
-
-      }
-      catch(error){
-        throw error
-      }
+      return profileDetails[0];
+    } catch (error) {
+      throw error;
+    }
   }
   async updateProfile(userId: Types.ObjectId, name: string): Promise<boolean> {
+    try {
+      const result = await userModel.updateOne(
+        { _id: userId },
+        { $set: { name: name } }
+      );
+      return result.modifiedCount > 0;
+    } catch (error) {
+      throw error;
+    }
+  }
+  async resetPassword(email: string, password: string): Promise<boolean> {
+    try {
+      const result = await userModel.updateOne(
+        { email: email },
+        { $set: { password: password } }
+      );
+      return result.modifiedCount > 0;
+    } catch (error) {
+      throw error;
+    }
+  }
+  async updateProfilePicture(
+    userId: Types.ObjectId,
+    key: string
+  ): Promise<boolean> {
+    try {
+      const result = await userModel.updateOne(
+        { _id: userId },
+        { $set: { profilePhoto: key } }
+      );
+
+      return result.modifiedCount > 0;
+    } catch (error) {
+      throw error;
+    }
+  }
+  async findPhotos(
+    userId: Types.ObjectId,
+    imageIds: Types.ObjectId[]
+  ): Promise<Image[]> {
+    try {
+      console.log("here")
+      console.log("imagaids",imageIds)
+      const convertedIds=imageIds.map((id) => new mongoose.Types.ObjectId(id))
+      const images = await userModel.aggregate([
+        { $match: { _id: new mongoose.Types.ObjectId(userId) } }, 
+        {
+          $project: {
+            images: {
+              $filter: {
+                input: "$images",
+                as: "image",
+                cond: { $in: ["$$image._id", convertedIds] },
+              },
+            },
+          },
+        },
+       {
+        $unwind:"$images"
+       },
+       {
+        $project:{
+          _id:0,
+          imagePath:"$images.imagePath"
+        }
+
+       }
+      ]);
+      console.log("imageIds",images)
+
+
+      
+      return images
+    } catch (error) {
+      throw error;
+    }
+  }
+  async deletePhotos(userId: Types.ObjectId, imageIds: Types.ObjectId[]): Promise<boolean> {
       try{
-        const result=await userModel.updateOne({_id:userId},{$set:{name:name}})
-        return result.modifiedCount>0
+         const result = await userModel.updateOne(
+           { _id: userId }, 
+           { $pull: { images: { _id: { $in: imageIds } } } } 
+         );
+         return result.modifiedCount>0
+        
 
       }
       catch(error){
@@ -173,4 +255,4 @@ class Repository implements IRepository {
       }
   }
 }
-export default Repository
+export default Repository;

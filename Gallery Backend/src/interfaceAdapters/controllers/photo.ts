@@ -59,5 +59,20 @@ class PhotoManagementControllers {
       next(error);
     }
   }
+  async deletePhotos(req:Request,res:Response,next:NextFunction){
+    try{
+        const userId = (req as CustomRequest).user.userId
+        const selectedImages=req.body
+        const response=await this.Interactor.deletePhotos(userId,selectedImages)
+        if(response)return res.status(200).json({success:true,message:"Sucessfully Deleted"})
+          res.status(500).json({success:false})
+
+
+    }
+    catch(error){
+      next(error)
+    }
+
+  }
 }
 export default PhotoManagementControllers;

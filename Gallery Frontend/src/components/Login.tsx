@@ -5,11 +5,14 @@ import { toast } from "sonner";
 import instance from "../axios/instance";
 import Spinner from "./Spinner";
 import logo from "@/assets/logo.png";
+import { addUser } from "../assets/redux/userSlice";
+import { useAppDispatch } from "../assets/redux/store";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const dispatch=useAppDispatch()
   const navigate = useNavigate();
 
   const handleTogglePassword = () => {
@@ -40,7 +43,12 @@ const Login = () => {
         email: email,
         password: password,
       });
-      if (response.data.success) return toast.success(response.data.message,{richColors:true,duration:1200,onAutoClose:()=>navigate("/")})
+      if (response.data.success) {
+        console.log("response",response)      
+            dispatch(
+            addUser({ user: response.data.user, img: response.data.img })
+          );
+        return toast.success(response.data.message,{richColors:true,duration:1200,onAutoClose:()=>navigate("/")})}
     } catch (error) {
       
       if (error instanceof AxiosError && error.response?.status !== 401) {
