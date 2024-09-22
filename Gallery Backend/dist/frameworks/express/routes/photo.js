@@ -1,0 +1,23 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const authentication_1 = __importDefault(require("../middlewares/authentication"));
+const isVerified_1 = __importDefault(require("../middlewares/isVerified"));
+const photo_1 = __importDefault(require("../../../interfaceAdapters/controllers/photo"));
+const photo_2 = __importDefault(require("../../../useCases/photo"));
+const repo_1 = __importDefault(require("../../../interfaceAdapters/repository/repo"));
+const awsS3_1 = __importDefault(require("../../services/awsS3"));
+const Multer_1 = __importDefault(require("../../services/Multer"));
+const photoRouter = express_1.default.Router();
+const awsS3 = new awsS3_1.default();
+const repository = new repo_1.default();
+const interactor = new photo_2.default(repository, awsS3);
+const controller = new photo_1.default(interactor);
+photoRouter.post('/', authentication_1.default, isVerified_1.default, Multer_1.default.array("photos"), controller.photoUpload.bind(controller));
+photoRouter.get('/', authentication_1.default, isVerified_1.default, controller.getPhotos.bind(controller));
+photoRouter.put('/', authentication_1.default, isVerified_1.default, controller.changePhotosOrder.bind(controller));
+photoRouter.put('/edit/:imgId', authentication_1.default, isVerified_1.default, controller.photoTitleEdit.bind(controller));
+exports.default = photoRouter;

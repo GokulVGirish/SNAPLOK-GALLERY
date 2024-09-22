@@ -1,0 +1,24 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const auth_1 = __importDefault(require("../../../interfaceAdapters/controllers/auth"));
+const auth_2 = __importDefault(require("../../../useCases/auth"));
+const repo_1 = __importDefault(require("../../../interfaceAdapters/repository/repo"));
+const authentication_1 = __importDefault(require("../middlewares/authentication"));
+const isVerified_1 = __importDefault(require("../middlewares/isVerified"));
+const Mailer_1 = __importDefault(require("../../services/Mailer"));
+const authRouter = express_1.default.Router();
+const repository = new repo_1.default();
+const mailer = new Mailer_1.default();
+const interactor = new auth_2.default(repository, mailer);
+const controller = new auth_1.default(interactor);
+authRouter.get('/token-verify', authentication_1.default, isVerified_1.default, controller.verifyToken.bind(controller));
+authRouter.delete('/token', controller.removeToken.bind(controller));
+authRouter.post('/otp', controller.otpSignup.bind(controller));
+authRouter.post('/otp/signup', authentication_1.default, controller.otpValidateSignup.bind(controller));
+authRouter.post('/login', controller.Login.bind(controller));
+authRouter.post('/logout', controller.Logout.bind(controller));
+exports.default = authRouter;
